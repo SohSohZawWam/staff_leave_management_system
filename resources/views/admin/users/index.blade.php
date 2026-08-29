@@ -92,7 +92,7 @@
                         </td>
                         <td>{{ $user->department ? (app()->getLocale() == 'my' ? ($user->department->name_mm ?? $user->department->name) : $user->department->name) : __('common.n_a') }}</td>
                         <td>{{ app()->getLocale() == 'my' ? $user->position_mm ?? $user->position : $user->position ?? $user->position_mm ?? __('common.n_a') }}</td>
-                        <td>{{ $user->staff_id ? my_number($user->staff_id) : __('common.n_a') }}</td>
+                        <td>{{ $user->staff_id ? $user->staff_id : __('common.n_a') }}</td>
                         <td>{{ $user->phone ? my_number($user->phone) : __('common.n_a') }}</td>
                         <td>
                             <span @class([

@@ -17,11 +17,24 @@
                     class="w-full mt-4 flex flex-nowrap items-end gap-3 overflow-x-auto pb-2">
                     @csrf
                     <input type="hidden" name="type" value="leave_summary">
+                    <input type="hidden" name="date_filter" id="summary_date_filter" value="leave_period">
 
                     <select name="department_id" id="summary_department_id" class="cu-select w-auto min-w-[160px]">
                         <option value="">{{ __('admin.all_departments') }}</option>
                         @foreach($departments as $department)
                             <option value="{{ $department->id }}">{{ app()->getLocale() == 'my' ? $department->name_mm ?? $department->name : $department->name }}</option>
+                        @endforeach
+                    </select>
+
+                    <input type="text" name="staff_name" id="summary_staff_name" list="summary-staff-suggestions"
+                        class="cu-input w-auto min-w-[180px]"
+                        placeholder="{{ __('common.search') }} {{ __('common.staff') }}..." autocomplete="off">
+                    <datalist id="summary-staff-suggestions"></datalist>
+
+                    <select name="status" id="summary_status" class="cu-select w-auto min-w-[150px]">
+                        <option value="">{{ __('admin.all_statuses') }}</option>
+                        @foreach(['approved', 'rejected', 'cancelled', 'revoked'] as $status)
+                            <option value="{{ $status }}">{{ __('common.'.$status) }}</option>
                         @endforeach
                     </select>
 
@@ -74,15 +87,40 @@
     @push('scripts')
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
         <script>
+            const summaryStaffSuggestions = <?php echo json_encode(\App\Models\User::where('role', 'staff')->orWhere('role', 'department_head')->get(['id', 'name', 'name_mm']), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+
+            document.getElementById('summary_staff_name').addEventListener('input', function () {
+                const query = this.value.toLowerCase();
+                const datalist = document.getElementById('summary-staff-suggestions');
+                datalist.innerHTML = '';
+
+                if (query.length < 1) return;
+
+                const matches = summaryStaffSuggestions
+                    .filter(s => s.name.toLowerCase().includes(query) || (s.name_mm || '').toLowerCase().includes(query))
+                    .slice(0, 10);
+                matches.forEach(s => {
+                    const option = document.createElement('option');
+                    option.value = s.name;
+                    datalist.appendChild(option);
+                });
+            });
+
             document.getElementById('summary-search-btn').addEventListener('click', function () {
                 const departmentId = document.getElementById('summary_department_id').value;
+                const staffName = document.getElementById('summary_staff_name').value;
+                const status = document.getElementById('summary_status').value;
                 const startDate = document.getElementById('summary_start_date').value;
                 const endDate = document.getElementById('summary_end_date').value;
+                const dateFilter = document.getElementById('summary_date_filter').value;
 
                 const params = new URLSearchParams();
                 if (departmentId) params.append('department_id', departmentId);
+                if (staffName) params.append('staff_name', staffName);
+                if (status) params.append('status', status);
                 if (startDate) params.append('start_date', startDate);
                 if (endDate) params.append('end_date', endDate);
+                params.append('date_filter', dateFilter);
 
                 fetch(`{{ route('admin.reports.leave-summary-data') }}?${params.toString()}`, {
                     headers: {
@@ -104,7 +142,14 @@
                 const today = '{{ date('Y-m-d') }}';
                 document.getElementById('summary_start_date').value = today;
                 document.getElementById('summary_end_date').value = today;
+                document.getElementById('summary_date_filter').value = 'created_at';
                 document.getElementById('summary-search-btn').click();
+            });
+
+            ['summary_start_date', 'summary_end_date'].forEach(function (id) {
+                document.getElementById(id).addEventListener('change', function () {
+                    document.getElementById('summary_date_filter').value = 'leave_period';
+                });
             });
 
             document.addEventListener('DOMContentLoaded', function () {

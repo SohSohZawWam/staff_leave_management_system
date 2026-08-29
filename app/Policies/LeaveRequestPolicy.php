@@ -56,7 +56,7 @@ class LeaveRequestPolicy
         }
 
         if ($user->isSuperAdmin()) {
-            return true;
+            return $leaveRequest->current_approval_level === 3;
         }
 
         if ($user->isAdmin()) {

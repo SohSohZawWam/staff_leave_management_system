@@ -89,7 +89,7 @@
                             </span>
                         </td>
                         <td>{{ $request->reviewed_at ? \App\Support\MyanmarDateFormatter::format($request->reviewed_at, 'F d, Y') : __('common.n_a') }}</td>
-                        <td>{{ app()->getLocale() == 'my' ? $request->hr->name_mm ?? $request->hr->name : $request->hr->name ?? __('common.n_a') }}</td>
+                        <td>{{ app()->getLocale() == 'my' ? ($request->super_admin->name_mm ?? $request->super_admin->name ?? $request->hr->name_mm ?? $request->hr->name) : ($request->super_admin->name ?? $request->hr->name) ?? __('common.n_a') }}</td>
                         <td>
                             <a href="{{ route('central-admin.approvals.show', $request) }}" class="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors inline-flex" title="{{ __('common.view') }}">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

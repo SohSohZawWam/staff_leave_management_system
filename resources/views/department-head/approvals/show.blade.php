@@ -19,7 +19,7 @@
                 <p class="text-base font-semibold text-slate-900">
                     {{ app()->getLocale() == 'my' ? ($leaveRequest->user->name_mm ?? $leaveRequest->user->name) : $leaveRequest->user->name }}
                 </p>
-                <p class="text-sm text-slate-500">{{ my_number($leaveRequest->user->staff_id) }}</p>
+                <p class="text-sm text-slate-500">{{ $leaveRequest->user->staff_id ?? __('common.n_a') }}</p>
             </div>
             <div>
                 <p class="cu-muted">{{ __('common.leave_type') }}</p>

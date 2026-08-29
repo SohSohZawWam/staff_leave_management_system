@@ -34,7 +34,14 @@
         </form>
 
         @foreach($pendingRequests as $request)
-            @if($request->current_approval_level === 2)
+            @if($request->current_approval_level === 3 && auth()->user()->isSuperAdmin())
+                <form id="approve-form-{{ $request->id }}" action="{{ route('central-admin.approvals.approve', $request) }}" method="POST" class="hidden">
+                    @csrf
+                </form>
+                <form id="reject-form-{{ $request->id }}" action="{{ route('central-admin.approvals.reject', $request) }}" method="POST" class="hidden">
+                    @csrf
+                </form>
+            @elseif($request->current_approval_level === 2 && auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin())
                 <form id="approve-form-{{ $request->id }}" action="{{ route('central-admin.approvals.approve', $request) }}" method="POST" class="hidden">
                     @csrf
                 </form>

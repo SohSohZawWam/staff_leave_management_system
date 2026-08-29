@@ -47,7 +47,7 @@
                             <h3 class="text-lg font-semibold text-slate-900">
                                 {{ app()->getLocale() == 'my' ? ($request->user->name_mm ?? $request->user->name) : $request->user->name }}
                             </h3>
-                            <p class="text-sm text-slate-500">{{ my_number($request->user->staff_id) }}</p>
+                            <p class="text-sm text-slate-500">{{ $request->user->staff_id ?? __('common.n_a') }}</p>
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="cu-badge-warning">{{ __('common.pending') }}</span>

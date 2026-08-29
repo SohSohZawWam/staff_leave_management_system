@@ -49,24 +49,55 @@ class LeaveWorkflowService
         return $leaveRequest;
     }
 
-    public function finalizeApproval(LeaveRequest $leaveRequest, User $hrUser, string $status, ?string $remarks = null): LeaveRequest
+    /**
+     * Handles the central phase of the workflow.
+     * - Admin (level 2) approval forwards the request to the super admin (level 3).
+     * - Super admin (level 3) approval finalizes the request.
+     * - Any reject terminates the request.
+     *
+     * Returns the notification key for the requester: 'approved', 'rejected' or 'pending_super_admin'.
+     */
+    public function processCentralApproval(LeaveRequest $leaveRequest, User $approver, string $status, ?string $remarks = null): string
     {
-        $leaveRequest->status = $status;
-        $leaveRequest->hr_id = $hrUser->id;
-        $leaveRequest->review_remarks = $remarks;
-        $leaveRequest->reviewed_at = Carbon::now();
+        if ($status === 'rejected') {
+            if ($approver->isSuperAdmin()) {
+                $leaveRequest->super_admin_id = $approver->id;
+            } else {
+                $leaveRequest->hr_id = $approver->id;
+            }
 
-        if ($status === 'approved') {
+            $leaveRequest->status = 'rejected';
+            $leaveRequest->review_remarks = $remarks;
+            $leaveRequest->reviewed_at = Carbon::now();
+            $leaveRequest->save();
+
+            return 'rejected';
+        }
+
+        if ($approver->isSuperAdmin()) {
+            $leaveRequest->status = 'approved';
+            $leaveRequest->super_admin_id = $approver->id;
+            $leaveRequest->review_remarks = $remarks;
+            $leaveRequest->reviewed_at = Carbon::now();
+
             $this->leaveBalanceService->updateUsedDays(
                 $leaveRequest->user,
                 $leaveRequest->leaveType,
                 $leaveRequest->total_days
             );
+
+            $leaveRequest->save();
+
+            return 'approved';
         }
 
+        $leaveRequest->current_approval_level = 3;
+        $leaveRequest->hr_id = $approver->id;
+        $leaveRequest->review_remarks = $remarks;
+        $leaveRequest->reviewed_at = Carbon::now();
         $leaveRequest->save();
 
-        return $leaveRequest;
+        return 'pending_super_admin';
     }
 
     public function approveDirectly(LeaveRequest $leaveRequest, User $approver, ?string $remarks = null): LeaveRequest

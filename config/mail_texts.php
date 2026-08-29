@@ -118,6 +118,19 @@ return [
         'signature' => config('app.name'),
     ],
 
+    'leave_request_pending_super_admin' => [
+        'subject' => 'ခွင့်တောင်းဆိုမှုကို Super Admin ထံသို့ အတည်ပြုပြီး လွှဲပြောင်းပေးပို့ပြီးပြီ',
+        'greeting' => 'မင်္ဂလာပါ :name',
+        'intro' => 'သင့်ခွင့်တောင်းဆိုမှုကို Admin မှ အတည်ပြုပြီး Super Admin ထံသို့ ပေးပို့ပြီးဖြစ်သည်။ ကျေးဇူးပြု၍ အောက်ပါ အချက်အလက်များကို သေချာကြည့်ပါ။',
+        'leave_type' => 'ခွင့်တောင်းဆိုမှုအမျိုးအစား',
+        'duration' => 'ကြာချိန်',
+        'dates' => 'ရက်စွဲများ',
+        'status' => 'အခြေအနေ',
+        'action' => 'ခွင့်တောင်းဆိုမှုကို ကြည့်ရှုပါ',
+        'outro' => 'ကျေးဇူးတင်ပါသည်။',
+        'signature' => config('app.name'),
+    ],
+
     'leave_request_updated' => [
         'subject' => 'ခွင့်တောင်းဆိုမှု အပ်ဒိတ်လုပ်ပြီးပြီ',
         'greeting' => 'မင်္ဂလာပါ :name',

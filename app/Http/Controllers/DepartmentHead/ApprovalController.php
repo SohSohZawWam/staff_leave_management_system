@@ -74,11 +74,6 @@ class ApprovalController extends Controller
             ->each(function ($admin) use ($leaveRequest) {
                 $admin->notify(new LeaveRequestSubmittedNotification($leaveRequest, 'admin'));
             });
-        $superAdmin = User::where('role', 'super_admin')->first();
-
-        if ($superAdmin) {
-            $superAdmin->notify(new LeaveRequestSubmittedNotification($leaveRequest, 'super_admin'));
-        }
 
         return redirect()->route('department-head.approvals.pending')
             ->with('success', __('flash.agree_success'));

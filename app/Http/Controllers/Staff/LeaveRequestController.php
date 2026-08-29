@@ -70,10 +70,21 @@ class LeaveRequestController extends Controller
             'start_date' => 'nullable|date|after_or_equal:today',
             'end_date' => 'nullable|date',
             'reason' => 'required|string|max:500',
-            'attachments' => 'nullable|array|max:5',
+            'attachments' => [
+                'nullable',
+                'array',
+                'max:3',
+                function ($attribute, $files, $fail) {
+                    if (collect($files)->sum(fn ($file) => $file->getSize()) > 6 * 1024 * 1024) {
+                        $fail('The total size of all attachments must not exceed 6 MB.');
+                    }
+                },
+            ],
             'attachments.*' => 'file|mimes:pdf,jpg,png|max:2048',
             'is_half_day' => 'nullable|boolean',
             'duty_exchange_user_id' => 'nullable|exists:users,id',
+        ], [
+            'attachments.max' => 'You can upload a maximum of 3 attachments.',
         ]);
 
         $leaveType = LeaveType::findOrFail($validated['leave_type_id']);
@@ -167,11 +178,6 @@ class LeaveRequestController extends Controller
                 ->each(function ($admin) use ($leaveRequest) {
                     $admin->notify(new LeaveRequestSubmittedNotification($leaveRequest, 'admin'));
                 });
-            $superAdmin = User::where('role', 'super_admin')->first();
-
-            if ($superAdmin) {
-                $superAdmin->notify(new LeaveRequestSubmittedNotification($leaveRequest, 'super_admin'));
-            }
         } else {
             $departmentHeadId = $leaveRequest->user->department?->head_id;
             $departmentHead = $departmentHeadId ? User::find($departmentHeadId) : null;
@@ -222,11 +228,22 @@ class LeaveRequestController extends Controller
             'start_date' => 'nullable|date|after_or_equal:today',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'reason' => 'required|string|max:500',
-            'attachments' => 'nullable|array|max:5',
+            'attachments' => [
+                'nullable',
+                'array',
+                'max:3',
+                function ($attribute, $files, $fail) {
+                    if (collect($files)->sum(fn ($file) => $file->getSize()) > 6 * 1024 * 1024) {
+                        $fail('The total size of all attachments must not exceed 6 MB.');
+                    }
+                },
+            ],
             'attachments.*' => 'file|mimes:pdf,jpg,png|max:2048',
             'is_half_day' => 'nullable|boolean',
             'remove_attachment' => 'nullable|boolean',
             'duty_exchange_user_id' => 'nullable|exists:users,id',
+        ], [
+            'attachments.max' => 'You can upload a maximum of 3 attachments.',
         ]);
 
         $leaveType = LeaveType::findOrFail($validated['leave_type_id']);

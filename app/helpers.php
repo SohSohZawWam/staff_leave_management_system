@@ -70,39 +70,13 @@ if (! function_exists('get_duty_exchange_candidates')) {
     function get_duty_exchange_candidates(User $user, ?int $excludeUserId = null): array
     {
         if ($user->isStaff() || $user->isDepartmentHead()) {
-            $query = User::where('department_id', $user->department_id)
-                ->where('is_active', true)
-                ->whereDoesntHave('leaveRequests', function ($q) {
-                    $q->where('status', 'approved')
-                        ->where(function ($q2) {
-                            $q2->whereDate('end_date', '>=', now()->toDateString())
-                                ->orWhereNull('end_date');
-                        });
-                })
-                ->whereDoesntHave('leaveRequests', function ($q) {
-                    $q->where('status', 'pending')
-                        ->whereDate('start_date', '<=', now()->toDateString())
-                        ->where(function ($q2) {
-                            $q2->whereDate('end_date', '>=', now()->toDateString())
-                                ->orWhereNull('end_date');
-                        });
-                });
+            $query = User::where('department_id', $user->department_id);
 
             if ($excludeUserId) {
                 $query->where('id', '!=', $excludeUserId);
             }
 
             $candidates = $query->get()->all();
-
-            $userLevel = get_position_level($user->position);
-
-            if ($userLevel !== null) {
-                $candidates = array_filter($candidates, function ($candidate) use ($userLevel) {
-                    $candidateLevel = get_position_level($candidate->position);
-
-                    return $candidateLevel === null || $candidateLevel <= $userLevel;
-                });
-            }
 
             return $candidates;
         }

@@ -263,6 +263,7 @@ class DashboardController extends Controller
         return LeaveRequest::query()
             ->with(['user', 'leaveType', 'user.department'])
             ->whereHas('user', fn ($q) => $q->where('department_id', $departmentId))
+            ->where('status', '!=', 'pending')
             ->when(! empty($filters['start_date']), fn ($query) => $query->whereDate('start_date', '>=', $filters['start_date']))
             ->when(! empty($filters['end_date']), fn ($query) => $query->whereDate('end_date', '<=', $filters['end_date']))
             ->orderByDesc('start_date');
@@ -273,7 +274,7 @@ class DashboardController extends Controller
         return $query->map(function ($item) {
             return [
                 'staff_name' => app()->getLocale() == 'my' ? ($item->user->name_mm ?? $item->user->name) : $item->user->name,
-                'staff_id' => my_number($item->user->staff_id ?? '—'),
+                'staff_id' => $item->user->staff_id ?? '—',
                 'leave_type' => app()->getLocale() == 'my' ? ($item->leaveType->name_mm ?? $item->leaveType->name) : $item->leaveType->name,
                 'start_date' => MyanmarDateFormatter::format($item->start_date, 'F d, Y'),
                 'end_date' => $item->end_date ? MyanmarDateFormatter::format($item->end_date, 'F d, Y') : '—',

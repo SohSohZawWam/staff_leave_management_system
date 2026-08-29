@@ -15,15 +15,19 @@ class AnalyticsService
         return app()->getLocale() === 'my' && ! empty($nameMm) ? $nameMm : $name;
     }
 
-    public function getDashboardStatistics(): array
+    public function getDashboardStatistics(?User $user = null): array
     {
         $today = now()->toDateString();
         $monthStart = now()->startOfMonth()->toDateString();
 
+        $pendingLevel = $user?->isSuperAdmin() ? 3 : 2;
+
         return [
             'total_staff' => User::where('role', 'staff')->count(),
             'total_departments' => Department::count(),
-            'pending_requests' => LeaveRequest::where('status', 'pending')->count(),
+            'pending_requests' => LeaveRequest::where('status', 'pending')
+                ->where('current_approval_level', $pendingLevel)
+                ->count(),
             'approved_today' => LeaveRequest::where('status', 'approved')
                 ->whereDate('reviewed_at', $today)
                 ->count(),

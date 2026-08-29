@@ -39,7 +39,7 @@
             <div class="mt-6 pt-6 border-t border-slate-100 space-y-3 text-sm">
                 <div class="flex justify-between">
                     <span class="text-slate-500">{{ __('common.staff_id') }}</span>
-                    <span class="font-medium text-slate-900">{{ my_number($user->staff_id) }}</span>
+                    <span class="font-medium text-slate-900">{{ $user->staff_id ?? __('common.n_a') }}</span>
                 </div>
                 <div class="flex justify-between">
                     <span class="text-slate-500">{{ __('common.email_address') }}</span>

@@ -61,12 +61,10 @@
                 <select name="duty_exchange_user_id" id="duty_exchange_user_id" class="cu-select">
                     <option value="">{{ __('common.none') }}</option>
                     @foreach(get_duty_exchange_candidates(auth()->user(), auth()->id()) as $candidate)
-                        @if(position_is_higher_or_equal($candidate->position, auth()->user()->position))
-                            <option value="{{ $candidate->id }}">
-                                {{ app()->getLocale() == 'my' ? ($candidate->name_mm ?? $candidate->name) : $candidate->name }}
-                                @if($candidate->position)({{ $candidate->position }})@endif
-                            </option>
-                        @endif
+                        <option value="{{ $candidate->id }}">
+                            {{ app()->getLocale() == 'my' ? ($candidate->name_mm ?? $candidate->name) : $candidate->name }}
+                            @if($candidate->position)({{ $candidate->position }})@endif
+                        </option>
                     @endforeach
                 </select>
                 @error('duty_exchange_user_id')
@@ -80,7 +78,12 @@
                     {{ __('common.supporting_document') }}
                     <span id="attachment-required" class="text-red-500 hidden">*</span>
                 </label>
-                <input type="file" name="attachments[]" id="attachments" class="cu-file" multiple>
+                <label for="attachments" class="cu-btn-secondary inline-flex cursor-pointer">
+                    Choose Files
+                </label>
+                <input type="file" name="attachments[]" id="attachments" class="absolute h-px w-px opacity-0" multiple accept="image/*,.pdf">
+                <div id="attachment-previews" class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"></div>
+                <p id="attachment-validation-error" class="cu-form-error hidden"></p>
                 <p class="mt-1 text-sm text-slate-500">{{ __('common.file_hint') }}</p>
                 @error('attachments')
                     <p class="cu-form-error">{{ $message }}</p>
@@ -155,6 +158,103 @@ function updateAttachmentRequirement() {
         attachmentInput.removeAttribute('required');
         requiredIndicator.classList.add('hidden');
     }
+}
+
+const attachmentInput = document.getElementById('attachments');
+const previewContainer = document.getElementById('attachment-previews');
+const attachmentValidationError = document.getElementById('attachment-validation-error');
+const maxAttachments = 3;
+const maxSingleAttachmentBytes = 2 * 1024 * 1024;
+const maxAttachmentBytes = 6 * 1024 * 1024;
+let selectedAttachments = [];
+
+attachmentInput.addEventListener('change', function () {
+    const newlySelectedAttachments = Array.from(this.files);
+    const attachmentsAfterSelection = selectedAttachments.concat(newlySelectedAttachments);
+    const totalAttachmentBytes = attachmentsAfterSelection.reduce(function (total, file) {
+        return total + file.size;
+    }, 0);
+    const oversizedAttachment = newlySelectedAttachments.find(function (file) {
+        return file.size > maxSingleAttachmentBytes;
+    });
+
+    if (oversizedAttachment) {
+        attachmentValidationError.textContent = 'Each attachment must not exceed 2 MB.';
+        attachmentValidationError.classList.remove('hidden');
+        syncAttachmentInput();
+        renderAttachmentPreviews();
+        return;
+    }
+
+    if (attachmentsAfterSelection.length > maxAttachments) {
+        attachmentValidationError.textContent = 'You can upload a maximum of 3 attachments.';
+        attachmentValidationError.classList.remove('hidden');
+        syncAttachmentInput();
+        renderAttachmentPreviews();
+        return;
+    }
+
+    if (totalAttachmentBytes > maxAttachmentBytes) {
+        attachmentValidationError.textContent = 'The total size of all attachments must not exceed 6 MB.';
+        attachmentValidationError.classList.remove('hidden');
+        syncAttachmentInput();
+        renderAttachmentPreviews();
+        return;
+    }
+
+    attachmentValidationError.classList.add('hidden');
+    selectedAttachments = selectedAttachments.concat(newlySelectedAttachments);
+    syncAttachmentInput();
+    renderAttachmentPreviews();
+});
+
+function syncAttachmentInput() {
+    const dataTransfer = new DataTransfer();
+    selectedAttachments.forEach(function (file) {
+        dataTransfer.items.add(file);
+    });
+    attachmentInput.files = dataTransfer.files;
+}
+
+function renderAttachmentPreviews() {
+    previewContainer.innerHTML = '';
+
+    selectedAttachments.forEach(function (file, index) {
+        const previewTile = document.createElement('div');
+        previewTile.className = 'relative overflow-hidden rounded-lg border border-slate-200 bg-white';
+
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'absolute right-1 top-1 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-red-200 bg-white text-red-600 shadow-sm hover:bg-red-50';
+        removeButton.innerHTML = '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6l12 12M18 6L6 18"></path></svg>';
+        removeButton.setAttribute('aria-label', 'Remove selected file');
+        removeButton.title = 'Remove selected file';
+        removeButton.addEventListener('click', function () {
+            selectedAttachments.splice(index, 1);
+            syncAttachmentInput();
+            attachmentValidationError.classList.add('hidden');
+            renderAttachmentPreviews();
+        });
+        previewTile.appendChild(removeButton);
+
+        if (file.type.startsWith('image/')) {
+            const previewImage = document.createElement('img');
+            previewImage.src = URL.createObjectURL(file);
+            previewImage.alt = '';
+            previewImage.className = 'h-32 w-full object-cover';
+            previewImage.onload = function () {
+                URL.revokeObjectURL(previewImage.src);
+            };
+            previewTile.appendChild(previewImage);
+        } else {
+            const fileType = document.createElement('div');
+            fileType.className = 'flex h-32 items-center justify-center bg-slate-50 text-sm font-medium uppercase text-slate-500';
+            fileType.textContent = file.type.split('/').pop() || 'file';
+            previewTile.appendChild(fileType);
+        }
+
+        previewContainer.appendChild(previewTile);
+    });
 }
 
 function updateLeaveTypeDescription() {

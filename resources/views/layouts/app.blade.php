@@ -19,7 +19,7 @@
         <aside id="sidebar"
             class="fixed inset-y-0 left-0 z-50 w-64 bg-primary-500 text-white transform -translate-x-full lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen transition-transform duration-200 ease-in-out flex flex-col shrink-0">
             <div class="flex items-center gap-3 px-6 h-24 border-b border-white/10 shrink-0">
-                <div class="w-12 overflow-hidden shadow-md shadow-primary-500/20">
+                <div class="w-16 overflow-hidden shadow-md shadow-primary-500/20">
                     <img src="{{ asset('images/ucsh_logo.jpg') }}" class="w-full h-full" />
                 </div>
                 <div class="flex flex-col leading-tight min-w-0">
@@ -357,10 +357,7 @@
                         </svg>
                     </button>
                     <div class="hidden sm:flex items-center gap-2">
-                        <div
-                            class="h-9 w-9 items-center justify-center rounded-xl bg-gold-600 text-white font-bold text-sm shadow-md shadow-primary-500/20">
-                            <img src="{{ asset('images/ucsh_logo.jpg') }}" />
-                        </div>
+                        <img src="{{ asset('images/ucsh_logo.jpg') }}" class="h-9 w-9 object-contain" />
                         <span class="font-semibold text-slate-900">{{ __('app.name') }}</span>
                     </div>
                 </div>

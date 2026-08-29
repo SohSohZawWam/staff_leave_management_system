@@ -22,6 +22,7 @@ class LeaveRequest extends Model
         'review_remarks',
         'reviewed_at',
         'hr_id',
+        'super_admin_id',
         'is_half_day',
         'duty_exchange_user_id',
     ];
@@ -57,6 +58,11 @@ class LeaveRequest extends Model
     public function hr(): BelongsTo
     {
         return $this->belongsTo(User::class, 'hr_id');
+    }
+
+    public function super_admin(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'super_admin_id');
     }
 
     public function dutyExchangeUser(): BelongsTo
@@ -107,5 +113,10 @@ class LeaveRequest extends Model
     public function isAwaitingHR(): bool
     {
         return $this->isPending() && $this->current_approval_level === 2;
+    }
+
+    public function isAwaitingSuperAdmin(): bool
+    {
+        return $this->isPending() && $this->current_approval_level === 3;
     }
 }

@@ -17,11 +17,19 @@
             </div>
         @endif
 
-        @if($leaveRequest->current_approval_level === 2)
+        @if($leaveRequest->isPending())
+            @if($leaveRequest->current_approval_level === 2)
+                <span class="cu-badge-warning">{{ __('central_admin.awaiting_admin') }}</span>
+            @elseif($leaveRequest->current_approval_level === 3)
+                <span class="cu-badge-warning">{{ __('central_admin.awaiting_super_admin') }}</span>
+            @else
                 <span class="cu-badge-warning">{{ __('common.pending') }}</span>
-            @elseif($leaveRequest->status === 'approved')
-                <span class="cu-badge-success">{{ __('common.approved') }}</span>
             @endif
+        @elseif($leaveRequest->status === 'approved')
+            <span class="cu-badge-success">{{ __('common.approved') }}</span>
+        @elseif(in_array($leaveRequest->status, ['rejected', 'revoked']))
+            <span class="cu-badge-danger">{{ __('common.' . $leaveRequest->status) }}</span>
+        @endif
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
@@ -30,7 +38,7 @@
                 <p class="text-base font-semibold text-slate-900">
                     {{ app()->getLocale() == 'my' ? ($leaveRequest->user->name_mm ?? $leaveRequest->user->name) : $leaveRequest->user->name }}
                 </p>
-                <p class="text-sm text-slate-500">{{ my_number($leaveRequest->user->staff_id) }}</p>
+                <p class="text-sm text-slate-500">{{ $leaveRequest->user->staff_id ?? __('common.n_a') }}</p>
             </div>
             <div>
                 <p class="cu-muted">{{ __('common.leave_type') }}</p>
@@ -123,9 +131,25 @@
                 @if($leaveRequest->hr)
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <p class="cu-muted">{{ __('common.reviewed_by') }} (HR / Central Admin)</p>
+                            <p class="cu-muted">{{ __('common.reviewed_by') }} ({{ __('common.hr_central_admin') }})</p>
                             <p class="text-base font-semibold text-slate-900">
                                 {{ app()->getLocale() == 'my' ? ($leaveRequest->hr->name_mm ?? $leaveRequest->hr->name) : $leaveRequest->hr->name }}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="cu-muted">{{ __('common.reviewed_date') }}</p>
+                            <p class="text-base font-semibold text-slate-900">
+                                    {{ \App\Support\MyanmarDateFormatter::format($leaveRequest->reviewed_at, 'F d, Y H:i') }}
+                            </p>
+                        </div>
+                    </div>
+                @endif
+                @if($leaveRequest->super_admin)
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <p class="cu-muted">{{ __('common.reviewed_by') }} ({{ __('common.super_admin') }})</p>
+                            <p class="text-base font-semibold text-slate-900">
+                                {{ app()->getLocale() == 'my' ? ($leaveRequest->super_admin->name_mm ?? $leaveRequest->super_admin->name) : $leaveRequest->super_admin->name }}
                             </p>
                         </div>
                         <div>
@@ -145,7 +169,7 @@
             </div>
         </div>
 
-        @if($leaveRequest->current_approval_level === 2)
+        @can('approve', $leaveRequest)
             <div class="border-t border-slate-100 pt-6">
                 <h3 class="cu-section-title mb-4">{{ __('common.actions') }}</h3>
                 <div class="flex flex-col sm:flex-row gap-4">
@@ -160,7 +184,9 @@
                                 <p class="cu-form-error">{{ $message }}</p>
                             @enderror
                         </div>
-                        <button type="submit" class="cu-btn-success w-full">{{ __('common.approve') }}</button>
+                        <button type="submit" class="cu-btn-success w-full">
+                            {{ auth()->user()->isSuperAdmin() ? __('common.approve') : __('central_admin.forward_to_super_admin') }}
+                        </button>
                     </form>
 
                     <form action="{{ route('central-admin.approvals.reject', $leaveRequest) }}" method="POST" class="flex-1">

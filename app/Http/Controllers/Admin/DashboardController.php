@@ -57,9 +57,9 @@ class DashboardController extends Controller
         }, $data);
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $statistics = $this->analyticsService->getDashboardStatistics();
+        $statistics = $this->analyticsService->getDashboardStatistics($request->user());
         $leaveByType = $this->analyticsService->getLeaveStatisticsByType();
         $departmentStats = $this->analyticsService->getDepartmentLeaveStatistics();
         $recentRequests = LeaveRequest::with('user', 'leaveType', 'reviewer', 'hr', 'dutyExchangeUser')
@@ -132,7 +132,7 @@ class DashboardController extends Controller
         $data = $query->map(function ($item) {
             return [
                 'staff_name' => app()->getLocale() == 'my' ? ($item->user->name_mm ?? $item->user->name) : $item->user->name,
-                'staff_id' => my_number($item->user->staff_id ?? '—'),
+                'staff_id' => $item->user->staff_id ?? '—',
                 'department' => $item->user->department ? (app()->getLocale() == 'my' ? ($item->user->department->name_mm ?? $item->user->department->name) : $item->user->department->name) : __('common.n_a'),
                 'leave_type' => app()->getLocale() == 'my' ? ($item->leaveType->name_mm ?? $item->leaveType->name) : $item->leaveType->name,
                 'start_date' => MyanmarDateFormatter::format($item->start_date, 'F d, Y'),
@@ -564,30 +564,48 @@ class DashboardController extends Controller
     {
         $filters = $request->validate([
             'department_id' => ['nullable', 'exists:departments,id'],
+            'staff_name' => ['nullable', 'string', 'max:255'],
+            'status' => ['nullable', 'in:approved,rejected,cancelled,revoked'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date'],
+            'date_filter' => ['nullable', 'in:leave_period,created_at'],
         ]);
+        $isCreatedAtFilter = ($filters['date_filter'] ?? 'leave_period') === 'created_at';
 
         $query = LeaveRequest::query()
             ->with(['user.department', 'leaveType', 'reviewer', 'dutyExchangeUser'])
+            ->where('status', '!=', 'pending')
             ->when(! empty($filters['department_id']), function ($query) use ($filters) {
                 $query->whereHas('user', function ($q) use ($filters) {
                     $q->where('department_id', $filters['department_id']);
                 });
             })
-            ->when(! empty($filters['start_date']), function ($query) use ($filters) {
-                $query->whereDate('created_at', '>=', $filters['start_date']);
+            ->when(! empty($filters['staff_name']), function ($query) use ($filters) {
+                $query->whereHas('user', function ($q) use ($filters) {
+                    $q->where(function ($sub) use ($filters) {
+                        $sub->where('name', 'like', '%'.$filters['staff_name'].'%')
+                            ->when(app()->getLocale() === 'my', function ($q2) use ($filters) {
+                                $q2->orWhere('name_mm', 'like', '%'.$filters['staff_name'].'%');
+                            });
+                    });
+                });
             })
-            ->when(! empty($filters['end_date']), function ($query) use ($filters) {
-                $query->whereDate('created_at', '<=', $filters['end_date']);
+            ->when(! empty($filters['status']), function ($query) use ($filters) {
+                $query->where('status', $filters['status']);
             })
-            ->orderByDesc('created_at')
+            ->when(! empty($filters['start_date']), function ($query) use ($filters, $isCreatedAtFilter) {
+                $query->whereDate($isCreatedAtFilter ? 'created_at' : 'start_date', '>=', $filters['start_date']);
+            })
+            ->when(! empty($filters['end_date']), function ($query) use ($filters, $isCreatedAtFilter) {
+                $query->whereDate($isCreatedAtFilter ? 'created_at' : 'end_date', '<=', $filters['end_date']);
+            })
+            ->orderByDesc($isCreatedAtFilter ? 'created_at' : 'start_date')
             ->get();
 
         $data = $query->map(function ($item) {
             return [
                 'staff_name' => $this->localizedName($item->user->name, $item->user->name_mm),
-                'staff_id' => my_number($item->user->staff_id ?? '—'),
+                'staff_id' => $item->user->staff_id ?? '—',
                 'department' => $item->user->department ? $this->localizedName($item->user->department->name, $item->user->department->name_mm) : '—',
                 'leave_type' => $this->localizedName($item->leaveType->name, $item->leaveType->name_mm),
                 'start_date' => MyanmarDateFormatter::format($item->start_date, 'F d, Y'),
@@ -785,7 +803,7 @@ class DashboardController extends Controller
         $data = $query->map(function ($balance) {
             return [
                 'staff_name' => $this->localizedName($balance->user->name, $balance->user->name_mm),
-                'staff_id' => my_number($balance->user->staff_id ?? '—'),
+                'staff_id' => $balance->user->staff_id ?? '—',
                 'department' => $balance->user->department?->name ? $this->localizedName($balance->user->department->name, $balance->user->department->name_mm) : __('common.n_a'),
                 'leave_type' => $this->localizedName($balance->leaveType->name, $balance->leaveType->name_mm),
                 'allocated_days' => my_number($balance->allocated_days),

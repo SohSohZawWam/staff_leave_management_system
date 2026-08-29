@@ -4,7 +4,9 @@ namespace App\Http\Controllers\CentralAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\LeaveRequest;
+use App\Models\User;
 use App\Notifications\LeaveRequestStatusUpdatedNotification;
+use App\Notifications\LeaveRequestSubmittedNotification;
 use App\Services\LeaveWorkflowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -18,10 +20,13 @@ class ApprovalController extends Controller
     public function pendingRequests(Request $request)
     {
         $query = LeaveRequest::where('status', 'pending')
-            ->where('current_approval_level', 2)
             ->with('user', 'leaveType', 'user.department', 'reviewer', 'dutyExchangeUser');
 
-        if (auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
+        if (auth()->user()->isSuperAdmin()) {
+            $query->where('current_approval_level', 3);
+        } else {
+            $query->where('current_approval_level', 2);
+
             if (! auth()->user()->isAssignedToRoutineDuty()) {
                 $query->where('id', 0);
             }
@@ -53,14 +58,24 @@ class ApprovalController extends Controller
             'remarks' => 'nullable|string|max:500',
         ]);
 
-        $this->leaveWorkflowService->finalizeApproval(
+        $result = $this->leaveWorkflowService->processCentralApproval(
             $leaveRequest,
             auth()->user(),
             'approved',
             $validated['remarks'] ?? null
         );
 
-        $leaveRequest->user->notify(new LeaveRequestStatusUpdatedNotification($leaveRequest, 'approved'));
+        if ($result === 'pending_super_admin') {
+            $leaveRequest->user->notify(new LeaveRequestStatusUpdatedNotification($leaveRequest, 'pending_super_admin'));
+
+            $superAdmin = User::where('role', 'super_admin')->first();
+
+            if ($superAdmin) {
+                $superAdmin->notify(new LeaveRequestSubmittedNotification($leaveRequest, 'super_admin'));
+            }
+        } else {
+            $leaveRequest->user->notify(new LeaveRequestStatusUpdatedNotification($leaveRequest, $result));
+        }
 
         return redirect()->route('central-admin.approvals.pending')
             ->with('success', __('flash.approve_success'));
@@ -76,7 +91,7 @@ class ApprovalController extends Controller
             'remarks' => 'required|string|max:500',
         ]);
 
-        $this->leaveWorkflowService->finalizeApproval(
+        $this->leaveWorkflowService->processCentralApproval(
             $leaveRequest,
             auth()->user(),
             'rejected',
@@ -95,7 +110,7 @@ class ApprovalController extends Controller
             abort(403);
         }
 
-        $leaveRequest->load('user', 'leaveType', 'reviewer', 'hr', 'user.department');
+        $leaveRequest->load('user', 'leaveType', 'reviewer', 'hr', 'super_admin', 'user.department');
 
         return view('central-admin.approvals.show', compact('leaveRequest'));
     }
@@ -103,8 +118,13 @@ class ApprovalController extends Controller
     public function history()
     {
         $processedRequests = LeaveRequest::where(function ($query) {
-            $query->where('hr_id', auth()->id())
-                ->orWhere('cancelled_by_id', auth()->id());
+            if (auth()->user()->isSuperAdmin()) {
+                $query->where('super_admin_id', auth()->id())
+                    ->orWhere('cancelled_by_id', auth()->id());
+            } else {
+                $query->where('hr_id', auth()->id())
+                    ->orWhere('cancelled_by_id', auth()->id());
+            }
         })
             ->with('user', 'leaveType', 'user.department', 'dutyExchangeUser')
             ->latest()
@@ -127,26 +147,32 @@ class ApprovalController extends Controller
 
         foreach ($validated['selected'] as $requestId) {
             $leaveRequest = LeaveRequest::where('status', 'pending')
-                ->where('current_approval_level', 2)
+                ->where('current_approval_level', auth()->user()->isSuperAdmin() ? 3 : 2)
                 ->findOrFail($requestId);
 
-            if ($status === 'approved') {
-                $this->leaveWorkflowService->finalizeApproval(
-                    $leaveRequest,
-                    auth()->user(),
-                    'approved',
-                    $validated['bulk_remarks']
-                );
-            } else {
-                $this->leaveWorkflowService->finalizeApproval(
-                    $leaveRequest,
-                    auth()->user(),
-                    'rejected',
-                    $validated['bulk_remarks']
-                );
+            if (Gate::denies('approve', $leaveRequest)) {
+                continue;
             }
 
-            $leaveRequest->user->notify(new LeaveRequestStatusUpdatedNotification($leaveRequest, $status));
+            $result = $this->leaveWorkflowService->processCentralApproval(
+                $leaveRequest,
+                auth()->user(),
+                $status,
+                $validated['bulk_remarks']
+            );
+
+            if ($result === 'pending_super_admin') {
+                $leaveRequest->user->notify(new LeaveRequestStatusUpdatedNotification($leaveRequest, 'pending_super_admin'));
+
+                $superAdmin = User::where('role', 'super_admin')->first();
+
+                if ($superAdmin) {
+                    $superAdmin->notify(new LeaveRequestSubmittedNotification($leaveRequest, 'super_admin'));
+                }
+            } else {
+                $leaveRequest->user->notify(new LeaveRequestStatusUpdatedNotification($leaveRequest, $result));
+            }
+
             $processed++;
         }
 

@@ -183,12 +183,14 @@ it('returns leave summary report data as json', function () {
     ]);
 
     $leaveType = LeaveType::where('code', 'ANNUAL')->first();
+    $leaveStart = now()->subDays(5)->startOfDay();
+    $leaveEnd = now()->subDays(2)->startOfDay();
 
     LeaveRequest::create([
         'user_id' => $staff->id,
         'leave_type_id' => $leaveType->id,
-        'start_date' => now()->subDays(5),
-        'end_date' => now()->subDays(2),
+        'start_date' => $leaveStart,
+        'end_date' => $leaveEnd,
         'total_days' => 4,
         'reason' => 'Vacation',
         'status' => 'approved',
@@ -198,6 +200,8 @@ it('returns leave summary report data as json', function () {
     $response = $this->actingAs($this->admin)
         ->get(route('admin.reports.leave-summary-data', [
             'department_id' => $staff->department_id,
+            'start_date' => $leaveStart->toDateString(),
+            'end_date' => $leaveEnd->toDateString(),
         ]));
 
     $response->assertOk();

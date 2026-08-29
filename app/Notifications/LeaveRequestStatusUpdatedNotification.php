@@ -27,6 +27,7 @@ class LeaveRequestStatusUpdatedNotification extends Notification implements Shou
             'approved' => 'leave_request_approved',
             'rejected' => 'leave_request_rejected',
             'pending_hr' => 'leave_request_pending_hr',
+            'pending_super_admin' => 'leave_request_pending_super_admin',
             'updated' => 'leave_request_updated',
             'dept_approved' => 'dept_head_approved',
             'revoked' => 'leave_request_updated',
@@ -53,6 +54,7 @@ class LeaveRequestStatusUpdatedNotification extends Notification implements Shou
             $notifiable->isStaff() => route('staff.leave-requests.show', $this->leaveRequest, false),
             $notifiable->isDepartmentHead() => route('department-head.approvals.show', $this->leaveRequest, false),
             $notifiable->isAdmin() => route('central-admin.approvals.show', $this->leaveRequest, false),
+            $notifiable->isSuperAdmin() => route('central-admin.approvals.show', $this->leaveRequest, false),
             default => '#',
         };
 
@@ -76,6 +78,7 @@ class LeaveRequestStatusUpdatedNotification extends Notification implements Shou
             'approved' => __('notifications.subject_approved'),
             'rejected' => __('notifications.subject_rejected'),
             'pending_hr' => __('notifications.leave_request_forwarded_hr'),
+            'pending_super_admin' => __('notifications.leave_request_forwarded_super_admin'),
             'updated' => __('notifications.leave_request_updated'),
             'dept_approved' => __('notifications.dept_head_approved_title'),
             default => __('notifications.leave_request_status_updated'),
@@ -90,6 +93,9 @@ class LeaveRequestStatusUpdatedNotification extends Notification implements Shou
         $message = match ($this->status) {
             'pending_hr' => __('notifications.pending_hr_staff_message', [
                 'dept_head_name' => $reviewerName,
+            ]),
+            'pending_super_admin' => __('notifications.pending_super_admin_staff_message', [
+                'admin_name' => $this->leaveRequest->hr ? ($locale == 'my' ? ($this->leaveRequest->hr->name_mm ?? $this->leaveRequest->hr->name) : $this->leaveRequest->hr->name) : __('common.not_assigned'),
             ]),
             'dept_approved' => __('notifications.dept_head_approved_message', [
                 'dept_head_name' => $reviewerName,
@@ -110,6 +116,7 @@ class LeaveRequestStatusUpdatedNotification extends Notification implements Shou
             $notifiable->isStaff() => route('staff.leave-requests.show', $this->leaveRequest, false),
             $notifiable->isDepartmentHead() => route('department-head.approvals.show', $this->leaveRequest, false),
             $notifiable->isAdmin() => route('central-admin.approvals.show', $this->leaveRequest, false),
+            $notifiable->isSuperAdmin() => route('central-admin.approvals.show', $this->leaveRequest, false),
             default => '#',
         };
 

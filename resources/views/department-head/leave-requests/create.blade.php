@@ -61,12 +61,10 @@
                 <select name="duty_exchange_user_id" id="duty_exchange_user_id" class="cu-select">
                     <option value="">{{ __('common.none') }}</option>
                     @foreach(get_duty_exchange_candidates(auth()->user(), auth()->id()) as $candidate)
-                        @if(position_is_higher_or_equal($candidate->position, auth()->user()->position))
-                            <option value="{{ $candidate->id }}">
-                                {{ app()->getLocale() == 'my' ? ($candidate->name_mm ?? $candidate->name) : $candidate->name }}
-                                @if($candidate->position)({{ $candidate->position }})@endif
-                            </option>
-                        @endif
+                        <option value="{{ $candidate->id }}">
+                            {{ app()->getLocale() == 'my' ? ($candidate->name_mm ?? $candidate->name) : $candidate->name }}
+                            @if($candidate->position)({{ $candidate->position }})@endif
+                        </option>
                     @endforeach
                 </select>
                 @error('duty_exchange_user_id')
